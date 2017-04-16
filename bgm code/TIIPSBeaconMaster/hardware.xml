@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<hardware>
+
+	<!-- ADCs enabled -->
+	<adc enable="true" />
+	<gpio port="F" pin="5" mode="input" out="0"/>
+	
+</hardware>
+

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<hardware>
+
+	<!-- GPIO configuration needed for WSTK UART to work-->
+	<gpio port="A" pin="3" mode="pushpull" out="0"/>
+	
+	<gpio port="F" pin="5" mode="input" out="0"/>
+	
+	<!-- ADCs enabled -->
+	<adc enable="true" />
+	
+</hardware>
+

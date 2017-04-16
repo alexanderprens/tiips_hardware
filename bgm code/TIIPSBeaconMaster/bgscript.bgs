@@ -1,0 +1,199 @@
+# Description - Master Beacon Code
+# Created by Nile Morecraft and Alex Rens
+# Most recent revision: 3/31/17
+##############################################
+
+#allow connection to phone
+import "ble_att_handler.bgs"
+
+# constants
+const TAGS_SIZE = 6
+
+# Variables:
+dim connected
+dim conn_handle
+dim res
+dim adc_value
+dim adc_conv
+dim voltage(2)
+dim TagId(3)
+dim tags_t01(6) 
+dim tags_t02(6) 
+dim tags_t03(6)
+dim tags_t04(6)
+dim tags_t05(6)
+dim tags_t06(6)
+dim tags_t07(6)
+dim tags_t08(6)
+dim tags_t09(6)
+dim tags_t0a(6)
+dim tags_t0b(6)
+
+# Boot event listener - Generated when the module is powered up or reset
+event system_boot(major, minor, patch, build, bootloader, hw)	
+	# Set bigger MTU to speed up transfer data
+	call gatt_set_max_mtu(MTU_SIZE)
+
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle	
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED	
+	
+	TagId(2:1) = $FF
+	TagId(1:1) = $0D
+	TagId(0:1) = $0A
+	
+	# connectable and discoverable
+   	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
+	
+	# start discovery scan all devices	 
+	call le_gap_discover(le_gap_discover_observation)	
+	
+	# setup timer with 1000ms interval
+	call hardware_set_soft_timer($FFFFF,0,0)
+	
+	# configure ADC reference voltage:
+	call hardware_config_adc_reference(3)
+	call system_set_tx_power(0.0)
+end
+
+# Software timer event - generated when software timer runs out
+event hardware_soft_timer(handle)
+
+	# read voltage at pin PF5 with 5 volt differential reference 
+	call hardware_read_adc(5, 5)(res, adc_value)
+	
+	# convert raw ADC value to millivolts:
+	adc_conv = adc_value * 5000 / 4096
+
+	# covert from little endien to big endien 
+	voltage(0:1) = (adc_conv >> 8) & $ff 
+	voltage(1:1) = (adc_conv & $FF)
+	
+	# gatt
+	call gatt_server_write_attribute_value(xgatt_beaconM,0,2,voltage(0:2))
+end
+
+event le_connection_closed(reason,connection) 
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED
+
+	# Restart advertising
+	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
+end
+
+# procedure for decoding advertising packets. The list of AD types can be found
+# at: https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile
+procedure decode_adv_data(adv_len, adv_data())
+
+    if(adv_len <= 0)
+		return
+	end if
+	
+	if memcmp( TagId(0) , adv_data(7) , 3) then
+	
+		#tag 1
+		if adv_data(10:1) = $01 then  
+			tags_t01(0:1) = adv_data(5:1)
+			tags_t01(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+		end if
+		
+		#tag 2
+		if adv_data(10:1) = $02 then
+			tags_t02(0:1) = adv_data(5:1)
+			tags_t02(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+		end if
+		
+		#tag 3
+		if adv_data(10:1) = $03 then
+			tags_t03(0:1) = adv_data(5:1)
+			tags_t03(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+		end if
+		
+		#tag 4
+		if adv_data(10:1) = $04 then
+			tags_t04(0:1) = adv_data(5:1)
+			tags_t04(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+		end if		
+		
+		#tag 5
+		if adv_data(10:1) = $05 then
+			tags_t05(0:1) = adv_data(5:1)
+			tags_t05(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+		end if		
+		
+		#tag 6
+		if adv_data(10:1) = $06 then
+			tags_t06(0:1) = adv_data(5:1)
+			tags_t06(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+		end if				
+
+		#tag 7
+		if adv_data(10:1) = $07 then
+			tags_t07(0:1) = adv_data(5:1)
+			tags_t07(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+		end if	
+
+		#tag 8
+		if adv_data(10:1) = $08 then
+			tags_t08(0:1) = adv_data(5:1)
+			tags_t08(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+		end if	
+		
+		#tag 9
+		if adv_data(10:1) = $09 then
+			tags_t09(0:1) = adv_data(5:1)
+			tags_t09(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag09,0,TAGS_SIZE,tags_t09(0:TAGS_SIZE))
+		end if				
+
+		#tag 10
+		if adv_data(10:1) = $10 then
+			tags_t0a(0:1) = adv_data(5:1)
+			tags_t0a(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag0a,0,TAGS_SIZE,tags_t0a(0:TAGS_SIZE))
+		end if
+		
+		#tag 10
+		if adv_data(10:1) = $11 then
+			tags_t0b(0:1) = adv_data(5:1)
+			tags_t0b(1:1) = adv_data(6:1)
+			
+			call gatt_server_write_attribute_value(xgatt_tag0b,0,TAGS_SIZE,tags_t0b(0:TAGS_SIZE))
+		end if			
+	end if
+end 
+
+event le_gap_scan_response(rssi,packet_type,address,address_type,bonding,data_len, data_data)
+	call decode_adv_data(data_len, data_data(0:data_len))
+end 
+
+# This event indicates that a GATT MTU exchange procedure has been completed.
+#----------------------------------------------------------------------------
+event gatt_mtu_exchanged(connection, mtu)
+	maxPayload = mtu - 1
+end
+
+# End of BGScript

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<gatt prefix="GATTDB_">
+
+	<!-- Generic Access Service -->
+	<!-- https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.generic_access.xml -->
+	<service uuid="1800">
+
+		<!-- Device Name -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.device_name.xml -->
+		<characteristic uuid="2a00">
+			<properties read="true" const="true" />
+			<value>TIIPS</value>
+		</characteristic>
+
+		<!-- Appearance -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.appearance.xml -->
+		<characteristic uuid="2a01">
+			<properties read="true" const="true" />
+			<value type="hex">0512</value>
+		</characteristic>
+
+	</service>
+
+	<!-- Generic Attribute Service -->
+	<!-- https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.generic_attribute.xml -->
+	<service uuid="1801">
+
+		<!-- Service Changed -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gatt.service_changed.xml -->
+		<characteristic uuid="2a05">
+			<properties read="true" indicate="true" />
+			<value type="hex" length="4">00000000</value><!-- TODO:: Set value or change type to "user" and add handling for it -->
+		</characteristic>
+
+	</service>
+	
+	<!-- TAGS Service -->
+	<service primary="true" uuid="00003a00-0000-1000-8000-00805f9b34fb">
+
+		<!-- T01 -->
+		<characteristic uuid="00003a01-0000-1000-8000-00805f9b34fb" id="xgatt_tag01" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T02 -->
+		<characteristic uuid="00003a02-0000-1000-8000-00805f9b34fb" id="xgatt_tag02" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T03 -->
+		<characteristic uuid="00003a03-0000-1000-8000-00805f9b34fb" id="xgatt_tag03" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T04 -->
+		<characteristic uuid="00003a04-0000-1000-8000-00805f9b34fb" id="xgatt_tag04" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T05 -->
+		<characteristic uuid="00003a05-0000-1000-8000-00805f9b34fb" id="xgatt_tag05" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T06 -->
+		<characteristic uuid="00003a06-0000-1000-8000-00805f9b34fb" id="xgatt_tag06" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T07 -->
+		<characteristic uuid="00003a07-0000-1000-8000-00805f9b34fb" id="xgatt_tag07" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T08 -->
+		<characteristic uuid="00003a08-0000-1000-8000-00805f9b34fb" id="xgatt_tag08" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T09 -->
+		<characteristic uuid="00003a09-0000-1000-8000-00805f9b34fb" id="xgatt_tag09" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T10 -->
+		<characteristic uuid="00003a0a-0000-1000-8000-00805f9b34fb" id="xgatt_tag0a" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- T11 -->
+		<characteristic uuid="00003a0b-0000-1000-8000-00805f9b34fb" id="xgatt_tag0b" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="4">00000000</value>
+		</characteristic>
+		
+		<!-- Beacon Master -->
+		<characteristic uuid="00003a0c-0000-1000-8000-00805f9b34fb" id="xgatt_beaconM" >
+			<properties read="true" const="false"/>
+			<value type="hex" length="2">0000</value>
+		</characteristic>
+
+	</service>
+	
+</gatt>

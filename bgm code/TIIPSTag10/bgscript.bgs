@@ -1,0 +1,168 @@
+# Attribute write handeler
+import "ble_att_handler.bgs"
+
+# Bluetooth services
+dim buzzer
+const bit_mask = $0008
+
+# Variables:
+dim connected
+dim conn_handle
+dim res
+dim adc_value
+dim adc_conv
+dim voltage_high
+dim voltage_low
+
+
+
+# Variable definitions
+dim advdata(30) # Buffer with 30 bytes for holding the iBeacon advertising data. 
+
+
+
+# A procedure to initialize iBeacon data
+procedure init_iBeacon_data()
+	
+	# Initialize iBeacon advertisement data
+
+	# Flags - See Bluetooth 4.0 Core Specification , Volume 3, Appendix C, 18.1.
+	advdata(0:1) = $02 # Length of the Flags field - 2 bytes-  
+	advdata(1:1) = $01 # Type of the Flags field.
+	advdata(2:1) = $06 # Flags field. Device in LE General discoverable mode and BR/EDR disabled.
+	
+	# Manufacturer data
+	advdata(3:1) = $1a # Length of the Manufacturer Data field - 26 bytes - 
+	advdata(4:1) = $ff # Data type - manufacturer specific data - Type of the Manufacturer Data field.
+	advdata(5:1) = $00 # Manufacturer data, Battery mV High Byte
+	advdata(6:1) = $00 # Manufacturer data, Battery mV Low Byte
+	advdata(7:1) = $0A # TIIPS
+	advdata(8:1) = $0D # TIIPS
+	advdata(9:1)  = $FF # TIIPS Device Code
+	advdata(10:1) = $10 # TIIPS Device Code
+	advdata(11:1) = $01
+	advdata(12:1) = $00
+	advdata(13:1) = $00
+	advdata(14:1) = $00
+	advdata(15:1) = $00
+	advdata(16:1) = $00
+	advdata(17:1) = $00
+	advdata(18:1) = $00
+	advdata(19:1) = $00
+	advdata(20:1) = $00
+	advdata(21:1) = $00
+	advdata(22:1) = $00
+	advdata(23:1) = $00
+	advdata(24:1) = $FA
+	
+	# The Major value, which is used to group related beacons -- NOT NEEDED but leaving 
+	advdata(25:1) = $00
+	advdata(26:1) = $00
+	
+	# The Minor value, which is used to specify individual beacon within a group -- NOT NEEDED
+	advdata(27:1) = $00
+	advdata(28:1) = $00
+	
+	# Signal power (calibrated RSSI) - The Beacon's measured RSSI at 1 meter distance in dBm. 
+	# See the iBeacon specification for measurement guidelines. --??? come back later
+	advdata(29:1) = $c3
+	
+end
+ 
+
+# Boot event listener - Generated =[7when the module is powered up or reset
+event system_boot(major, minor, patch, build, bootloader, hw)
+
+	call init_iBeacon_data()
+	# Set advertisement interval to 100ms, use all three ADV channels, change channel to single 
+	call le_gap_set_adv_parameters($160, $160, $07)
+	
+	# Set bigger MTU to speed up transfer data
+	call gatt_set_max_mtu(MTU_SIZE)
+
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED
+	
+    # turn off buzzer	
+	buzzer = 0
+	
+	# Start Bluetooth LE advertisements and enable connections
+	call le_gap_set_mode(le_gap_general_discoverable,$2)
+			
+	# setup timer with 1000ms interval
+	call hardware_set_soft_timer($FFFFF,0,0)
+		
+	# configure ADC reference voltage:
+	call hardware_config_adc_reference(3)
+	call system_set_tx_power(0.0)
+end
+
+# Disconnect event listener - generated when connection is closed
+# ---------------------------------------------------------------
+event le_connection_closed(reason,connection)
+
+	# Service disconnect handlers
+  
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED
+	
+	# Restart advertising
+	call le_gap_set_mode($2, $2)
+end
+
+# This event is generated when a remote device writes a characteristic to the GATT database. 
+# This event is only generated for characteristics where type="user" is NOT set.
+# -------------------------------------------------------------------------------------------
+event gatt_server_attribute_value(connection, attribute, att_opcode, offset, value_len, value_data)
+
+	# Characteristic value handlers
+	# Buzzer service
+	#if (attribute >= xgatt_buzzer && attribute <= xgatt_buzzer) then
+	#	call buzzer_valueChangeCallback(connection, attribute, att_opcode, offset, value_len, value_data(0:value_len))
+	#end if   
+  
+	if attribute = xgatt_buzzer then
+      
+		if buzzer = 0 then
+			call hardware_write_gpio(0,bit_mask,$ffff)
+			buzzer = 1
+		
+		else
+			call hardware_write_gpio(0,bit_mask,$0000)
+			buzzer = 0
+		end if
+    end if
+end
+
+# This event indicates that a GATT MTU exchange procedure has been completed.
+#----------------------------------------------------------------------------
+event gatt_mtu_exchanged(connection, mtu)
+	maxPayload = mtu - 1
+end
+
+# Software timer event - generated when software timer runs out
+event hardware_soft_timer(handle)
+
+	# read voltage at pin PF5 with 5 volt differential reference 
+	call hardware_read_adc(5, 5)(res, adc_value)
+	
+	# convert raw ADC value to millivolts:
+	adc_conv = adc_value * 5000 / 4096
+
+	# covert from little endien to big endien 
+	voltage_high = (adc_conv >> 8) & $ff 
+	voltage_low = (adc_conv & $FF)
+	
+	# Set custom advertisement data
+	advdata(5:1) = voltage_high 
+	advdata(6:1) = voltage_low 
+	call le_gap_set_adv_data(0, 30, advdata(0:30))
+end
+
+# End of BGScript

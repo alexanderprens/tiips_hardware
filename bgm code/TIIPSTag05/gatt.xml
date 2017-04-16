@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<gatt prefix="GATTDB_">
+	<!-- ProfileName: TIIPS TAG-->
+
+	<!-- Generic Access Service -->
+	<!-- https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.generic_access.xml -->
+	<service uuid="1800">
+
+		<!-- Device Name -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.device_name.xml -->
+		<characteristic uuid="2a00">
+			<properties read="true" const="true" />
+			<value>TAG05</value>
+		</characteristic>
+
+		<!-- Appearance -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.appearance.xml -->
+		<characteristic uuid="2a01">
+			<properties read="true" const="true" />
+			<value type="hex">0512</value>
+		</characteristic>
+
+	</service>
+
+	<!-- Generic Attribute Service -->
+	<!-- https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.generic_attribute.xml -->
+	<service uuid="1801">
+
+		<!-- Service Changed -->
+		<!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gatt.service_changed.xml -->
+		<characteristic uuid="2a05">
+			<properties read="true" indicate="true" />
+			<value type="hex">00000000</value>
+		</characteristic>
+
+	</service>
+
+	<!-- Buzzer-->
+	<service primary="true" uuid="00004a00-0000-1000-8000-00805f9b34fb">
+
+		<!-- Buzzer : Mandatory -->
+		<characteristic uuid="00004a01-0000-1000-8000-00805f9b34fb" id="xgatt_buzzer" >
+			<properties write="true" />
+			<value type="hex" length="1"></value>
+		</characteristic>
+
+	</service>
+
+</gatt>
