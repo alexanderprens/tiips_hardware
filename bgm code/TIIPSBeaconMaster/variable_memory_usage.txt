@@ -1,4 +1,4 @@
-203
+197
 0:0	ENDPOINT_FLAG_ACTIVE
 0:0	ENDPOINT_FLAG_BGAPI
 0:0	ENDPOINT_FLAG_CLOSING
@@ -196,6 +196,7 @@
 100:4	maxPayload
 104:4	attHandler_currentPosition
 108:4	tmp_bytesToSend
+112:0	endpoint_uart1
 112:0	TAGS_SIZE
 112:4	connected
 116:4	conn_handle
@@ -204,14 +205,18 @@
 128:4	adc_conv
 132:2	voltage
 134:3	TagId
-137:6	tags_t01
-143:6	tags_t02
-149:6	tags_t03
-155:6	tags_t04
-161:6	tags_t05
-167:6	tags_t06
-173:6	tags_t07
-179:6	tags_t08
-185:6	tags_t09
-191:6	tags_t0a
-197:6	tags_t0b
+137:4	tags_t01
+141:4	tags_t02
+145:4	tags_t03
+149:4	tags_t04
+153:4	tags_t05
+157:4	tags_t06
+161:4	tags_t07
+165:4	tags_t08
+169:4	tags_t09
+173:4	tags_t0a
+177:4	tags_t0b
+181:4	battery1
+185:4	battery2
+189:4	missing
+193:4	rand

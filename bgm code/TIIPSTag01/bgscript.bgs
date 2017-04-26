@@ -89,11 +89,11 @@ event system_boot(major, minor, patch, build, bootloader, hw)
 	call le_gap_set_mode(le_gap_general_discoverable,$2)
 			
 	# setup timer with 1000ms interval
-	call hardware_set_soft_timer($FFFFF,0,0)
+	call hardware_set_soft_timer($500000,0,0)	#1 min timer
 		
 	# configure ADC reference voltage:
 	call hardware_config_adc_reference(3)
-	call system_set_tx_power(0.0)
+	call system_set_tx_power(80.0)
 end
 
 # Disconnect event listener - generated when connection is closed

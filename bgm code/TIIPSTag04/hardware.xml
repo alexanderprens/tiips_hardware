@@ -2,13 +2,15 @@
 
 <hardware>
 
+	<!-- enable sleep mode -->
+	<sleep enable="true"/>
+
 	<!-- GPIO configuration needed for WSTK UART to work-->
-	<gpio port="A" pin="3" mode="pushpull" out="0"/>
-	
-	<gpio port="F" pin="5" mode="input" out="0"/>
+	<gpio port="A" pin="3" mode="pushpull" out="0"/>	
 	
 	<!-- ADCs enabled -->
 	<adc enable="true" />
+	<gpio port="F" pin="5" mode="input" out="0"/>
 	
 </hardware>
 

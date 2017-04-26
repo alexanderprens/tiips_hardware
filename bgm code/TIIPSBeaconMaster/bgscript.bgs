@@ -6,8 +6,10 @@
 #allow connection to phone
 import "ble_att_handler.bgs"
 
+# Constants:
+const endpoint_uart1   = 2
 # constants
-const TAGS_SIZE = 6
+const TAGS_SIZE = 4
 
 # Variables:
 dim connected
@@ -17,17 +19,22 @@ dim adc_value
 dim adc_conv
 dim voltage(2)
 dim TagId(3)
-dim tags_t01(6) 
-dim tags_t02(6) 
-dim tags_t03(6)
-dim tags_t04(6)
-dim tags_t05(6)
-dim tags_t06(6)
-dim tags_t07(6)
-dim tags_t08(6)
-dim tags_t09(6)
-dim tags_t0a(6)
-dim tags_t0b(6)
+dim tags_t01(4) 
+dim tags_t02(4) 
+dim tags_t03(4)
+dim tags_t04(4)
+dim tags_t05(4)
+dim tags_t06(4)
+dim tags_t07(4)
+dim tags_t08(4)
+dim tags_t09(4)
+dim tags_t0a(4)
+dim tags_t0b(4)
+dim battery1	
+dim battery2
+dim missing(4)
+dim rand
+
 
 # Boot event listener - Generated when the module is powered up or reset
 event system_boot(major, minor, patch, build, bootloader, hw)	
@@ -51,11 +58,13 @@ event system_boot(major, minor, patch, build, bootloader, hw)
 	call le_gap_discover(le_gap_discover_observation)	
 	
 	# setup timer with 1000ms interval
-	call hardware_set_soft_timer($FFFFF,0,0)
+	call hardware_set_soft_timer($5000000,0,0)	#2 min timer
+	#call hardware_set_soft_timer($54600000,0,0)	#12 hour timer
+	#call hardware_set_soft_timer($2A300000,0,0)	#6 hour timer
 	
 	# configure ADC reference voltage:
 	call hardware_config_adc_reference(3)
-	call system_set_tx_power(0.0)
+	call system_set_tx_power(80.0)
 end
 
 # Software timer event - generated when software timer runs out
@@ -73,6 +82,160 @@ event hardware_soft_timer(handle)
 	
 	# gatt
 	call gatt_server_write_attribute_value(xgatt_beaconM,0,2,voltage(0:2))
+	
+	# tag 1
+	call gatt_server_read_attribute_value(xgatt_tag01,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t01(2:2) = missing(2:2) + $0001
+	else 
+		tags_t01(2:2) = $0000
+	end if
+	
+	tags_t01(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag01,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	# tag 2
+	call gatt_server_read_attribute_value(xgatt_tag02,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t02(2:2) = missing(2:2) + $0001
+	else 
+		tags_t02(2:2) = $0000
+	end if
+	
+	tags_t02(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag02,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 3
+	call gatt_server_read_attribute_value(xgatt_tag03,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t03(2:2) = missing(2:2) + $0001
+	else 
+		tags_t03(2:2) = $0000
+	end if
+	
+	tags_t03(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag03,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 4
+	call gatt_server_read_attribute_value(xgatt_tag04,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t04(2:2) = missing(2:2) + $0001
+	else 
+		tags_t04(2:2) = $0000
+	end if
+	
+	tags_t04(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag04,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 5
+	call gatt_server_read_attribute_value(xgatt_tag05,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t05(2:2) = missing(2:2) + $0001
+	else 
+		tags_t05(2:2) = $0000
+	end if
+	
+	tags_t05(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag05,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 6
+	call gatt_server_read_attribute_value(xgatt_tag06,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t06(2:2) = missing(2:2) + $0001
+	else 
+		tags_t06(2:2) = $0000
+	end if
+	
+	tags_t06(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag06,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 7
+	call gatt_server_read_attribute_value(xgatt_tag07,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t07(2:2) = missing(2:2) + $0001
+	else 
+		tags_t07(2:2) = $0000
+	end if
+	
+	tags_t07(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag07,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 8
+	call gatt_server_read_attribute_value(xgatt_tag08,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t08(2:2) = missing(2:2) + $0001
+	else 
+		tags_t08(2:2) = $0000
+	end if
+	
+	tags_t08(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag08,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	# tag 9
+	call gatt_server_read_attribute_value(xgatt_tag09,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t09(2:2) = missing(2:2) + $0001
+	else 
+		tags_t09(2:2) = $0000
+	end if
+	
+	tags_t09(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag09,0,TAGS_SIZE,tags_t09(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag09,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 10
+	call gatt_server_read_attribute_value(xgatt_tag0a,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t0a(2:2) = missing(2:2) + $0001
+	else 
+		tags_t0a(2:2) = $0000
+	end if
+	
+	tags_t0a(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag0a,0,TAGS_SIZE,tags_t0a(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag0a,0)(res, rand, missing(0:TAGS_SIZE))
+
+	# tag 11
+	call gatt_server_read_attribute_value(xgatt_tag0b,0)(res, rand, missing(0:TAGS_SIZE))
+	
+	if missing(0:2) = $0000 then
+		tags_t0b(2:2) = missing(2:2) + $0001
+	else 
+		tags_t0b(2:2) = $0000
+	end if
+	
+	tags_t0b(0:2) = $0000
+	call gatt_server_write_attribute_value(xgatt_tag0b,0,TAGS_SIZE,tags_t0b(0:TAGS_SIZE))
+
+	call gatt_server_read_attribute_value(xgatt_tag0b,0)(res, rand, missing(0:TAGS_SIZE))	
 end
 
 event le_connection_closed(reason,connection) 
@@ -84,6 +247,8 @@ event le_connection_closed(reason,connection)
 
 	# Restart advertising
 	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
+	call le_gap_discover(le_gap_discover_observation)
+	call dfu_reset(0)
 end
 
 # procedure for decoding advertising packets. The list of AD types can be found
@@ -94,96 +259,95 @@ procedure decode_adv_data(adv_len, adv_data())
 		return
 	end if
 	
-	if memcmp( TagId(0) , adv_data(7) , 3) then
+	battery1 = adv_data(5:1)
+	battery2 = adv_data(6:1)
 	
-		#tag 1
-		if adv_data(10:1) = $01 then  
-			tags_t01(0:1) = adv_data(5:1)
-			tags_t01(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
-		end if
-		
-		#tag 2
-		if adv_data(10:1) = $02 then
-			tags_t02(0:1) = adv_data(5:1)
-			tags_t02(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
-		end if
-		
-		#tag 3
-		if adv_data(10:1) = $03 then
-			tags_t03(0:1) = adv_data(5:1)
-			tags_t03(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
-		end if
-		
-		#tag 4
-		if adv_data(10:1) = $04 then
-			tags_t04(0:1) = adv_data(5:1)
-			tags_t04(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
-		end if		
-		
-		#tag 5
-		if adv_data(10:1) = $05 then
-			tags_t05(0:1) = adv_data(5:1)
-			tags_t05(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
-		end if		
-		
-		#tag 6
-		if adv_data(10:1) = $06 then
-			tags_t06(0:1) = adv_data(5:1)
-			tags_t06(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
-		end if				
+	#tag 1
+	if adv_data(10:1) = $01 then  
+		tags_t01(0:1) = battery1
+		tags_t01(1:1) = battery2
 
-		#tag 7
-		if adv_data(10:1) = $07 then
-			tags_t07(0:1) = adv_data(5:1)
-			tags_t07(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
-		end if	
-
-		#tag 8
-		if adv_data(10:1) = $08 then
-			tags_t08(0:1) = adv_data(5:1)
-			tags_t08(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
-		end if	
-		
-		#tag 9
-		if adv_data(10:1) = $09 then
-			tags_t09(0:1) = adv_data(5:1)
-			tags_t09(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag09,0,TAGS_SIZE,tags_t09(0:TAGS_SIZE))
-		end if				
-
-		#tag 10
-		if adv_data(10:1) = $10 then
-			tags_t0a(0:1) = adv_data(5:1)
-			tags_t0a(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag0a,0,TAGS_SIZE,tags_t0a(0:TAGS_SIZE))
-		end if
-		
-		#tag 10
-		if adv_data(10:1) = $11 then
-			tags_t0b(0:1) = adv_data(5:1)
-			tags_t0b(1:1) = adv_data(6:1)
-			
-			call gatt_server_write_attribute_value(xgatt_tag0b,0,TAGS_SIZE,tags_t0b(0:TAGS_SIZE))
-		end if			
+		call gatt_server_write_attribute_value(xgatt_tag01,0,2,tags_t01(0:2))
 	end if
+	
+	#tag 2
+	if adv_data(10:1) = $02 then
+		tags_t02(0:1) = battery1
+		tags_t02(1:1) = battery2
+		call gatt_server_write_attribute_value(xgatt_tag02,0,2,tags_t02(0:2))
+	end if
+	
+	#tag 3
+	if adv_data(10:1) = $03 then
+		tags_t03(0:1) = adv_data(5:1)
+		tags_t03(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag03,0,2,tags_t03(0:2))
+	end if
+	
+	#tag 4
+	if adv_data(10:1) = $04 then
+		tags_t04(0:1) = adv_data(5:1)
+		tags_t04(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag04,0,2,tags_t04(0:2))
+	end if		
+	
+	#tag 5
+	if adv_data(10:1) = $05 then
+		tags_t05(0:1) = adv_data(5:1)
+		tags_t05(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag05,0,2,tags_t05(0:2))
+	end if		
+	
+	#tag 6
+	if adv_data(10:1) = $06 then
+		tags_t06(0:1) = adv_data(5:1)
+		tags_t06(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag06,0,2,tags_t06(0:2))
+	end if				
+
+	#tag 7
+	if adv_data(10:1) = $07 then
+		tags_t07(0:1) = adv_data(5:1)
+		tags_t07(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag07,0,2,tags_t07(0:2))
+	end if	
+
+	#tag 8
+	if adv_data(10:1) = $08 then
+		tags_t08(0:1) = adv_data(5:1)
+		tags_t08(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag08,0,2,tags_t08(0:2))
+	end if	
+	
+	#tag 9
+	if adv_data(10:1) = $09 then
+		tags_t09(0:1) = adv_data(5:1)
+		tags_t09(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag09,0,2,tags_t09(0:2))
+	end if				
+
+	#tag 10
+	if adv_data(10:1) = $10 then
+		tags_t0a(0:1) = adv_data(5:1)
+		tags_t0a(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag0a,0,2,tags_t0a(0:2))
+	end if
+	
+	#tag 10
+	if adv_data(10:1) = $11 then
+		tags_t0b(0:1) = adv_data(5:1)
+		tags_t0b(1:1) = adv_data(6:1)
+		
+		call gatt_server_write_attribute_value(xgatt_tag0b,0,2,tags_t0b(0:2))
+	end if			
 end 
 
 event le_gap_scan_response(rssi,packet_type,address,address_type,bonding,data_len, data_data)
