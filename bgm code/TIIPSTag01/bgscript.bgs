@@ -62,6 +62,7 @@ procedure init_iBeacon_data()
 	# Signal power (calibrated RSSI) - The Beacon's measured RSSI at 1 meter distance in dBm. 
 	# See the iBeacon specification for measurement guidelines. --??? come back later
 	advdata(29:1) = $c3
+	call le_gap_set_adv_data(0, 30, advdata(0:30))
 	
 end
  

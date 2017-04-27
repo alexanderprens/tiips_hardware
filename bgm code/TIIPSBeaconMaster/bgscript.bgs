@@ -58,9 +58,8 @@ event system_boot(major, minor, patch, build, bootloader, hw)
 	call le_gap_discover(le_gap_discover_observation)	
 	
 	# setup timer with 1000ms interval
-	call hardware_set_soft_timer($5000000,0,0)	#2 min timer
+	call hardware_set_soft_timer($50000,0,0)	#30 sec timer
 	#call hardware_set_soft_timer($54600000,0,0)	#12 hour timer
-	#call hardware_set_soft_timer($2A300000,0,0)	#6 hour timer
 	
 	# configure ADC reference voltage:
 	call hardware_config_adc_reference(3)
@@ -236,6 +235,7 @@ event hardware_soft_timer(handle)
 	call gatt_server_write_attribute_value(xgatt_tag0b,0,TAGS_SIZE,tags_t0b(0:TAGS_SIZE))
 
 	call gatt_server_read_attribute_value(xgatt_tag0b,0)(res, rand, missing(0:TAGS_SIZE))	
+
 end
 
 event le_connection_closed(reason,connection) 
@@ -248,7 +248,6 @@ event le_connection_closed(reason,connection)
 	# Restart advertising
 	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
 	call le_gap_discover(le_gap_discover_observation)
-	call dfu_reset(0)
 end
 
 # procedure for decoding advertising packets. The list of AD types can be found
@@ -351,7 +350,12 @@ procedure decode_adv_data(adv_len, adv_data())
 end 
 
 event le_gap_scan_response(rssi,packet_type,address,address_type,bonding,data_len, data_data)
+
 	call decode_adv_data(data_len, data_data(0:data_len))
+	
+	# connectable and discoverable
+   	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
+	call le_gap_discover(le_gap_discover_observation)
 end 
 
 # This event indicates that a GATT MTU exchange procedure has been completed.
