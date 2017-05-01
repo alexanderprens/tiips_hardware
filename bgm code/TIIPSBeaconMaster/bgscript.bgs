@@ -58,8 +58,8 @@ event system_boot(major, minor, patch, build, bootloader, hw)
 	call le_gap_discover(le_gap_discover_observation)	
 	
 	# setup timer with 1000ms interval
-	call hardware_set_soft_timer($50000,0,0)	#30 sec timer
-	#call hardware_set_soft_timer($54600000,0,0)	#12 hour timer
+	#call hardware_set_soft_timer($50000,0,0)	#30 sec timer
+	call hardware_set_soft_timer($54600000,0,0)	#12 hour timer
 	
 	# configure ADC reference voltage:
 	call hardware_config_adc_reference(3)
