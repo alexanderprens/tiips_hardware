@@ -1,0 +1,592 @@
+# Description - Initial Beacon code
+# Nile Morecraft/Alex Rens
+# 2/3/17
+#changed some values for inital testing 
+##############################################
+
+
+
+# Constants:
+const endpoint_uart1   = 2
+
+# LED0 is mapped to pin F6
+const led_bank      = 5
+const led_pin_mask  = $40
+
+# Variables:
+dim connected
+dim conn_handle
+dim batteryVoltage
+dim n
+dim string(6)
+dim TagId(5)
+dim SigVal
+dim AveSig
+dim PreSig_Tag01(20)
+dim receivedScanCount_Tag01
+dim over10_Tag01
+dim average_Tag01
+dim sum
+dim i
+
+dim PreSig_Tag02(20)
+dim receivedScanCount_Tag02
+dim over10_Tag02
+dim average_Tag02
+dim sum2
+dim i2
+
+dim PreSig_Tag03(20)
+dim receivedScanCount_Tag03
+dim over10_Tag03
+dim average_Tag03
+dim sum3
+dim i3
+dim PreSig_Tag04(20)
+dim receivedScanCount_Tag04
+dim over10_Tag04
+dim average_Tag04
+dim sum4
+dim i4
+dim PreSig_Tag05(20)
+dim receivedScanCount_Tag05
+dim over10_Tag05
+dim average_Tag05
+dim sum5
+dim i5
+dim PreSig_Tag06(20)
+dim receivedScanCount_Tag06
+dim over10_Tag06
+dim average_Tag06
+dim sum6
+dim i6
+dim PreSig_Tag07(20)
+dim receivedScanCount_Tag07
+dim over10_Tag07
+dim average_Tag07
+dim sum7
+dim i7
+dim PreSig_Tag08(20)
+dim receivedScanCount_Tag08
+dim over10_Tag08
+dim average_Tag08
+dim sum8
+dim i8
+
+# Variable definitions
+dim advdata(30) # Buffer with 30 bytes for holding the iBeacon advertising data.
+
+# print a nibble (4 bits)
+procedure print_nibble(nibble)
+
+	n = nibble
+
+	if n < $a then
+		n = n + $30
+	else
+		n = n + $37
+	end if
+
+	call endpoint_send(endpoint_uart1, 1, n)
+end
+# print hex values (range 0..255 -> output 0x00..0xFF)
+procedure print_hex(hex)
+	call print_nibble(hex/16)
+	call print_nibble(hex&$f)
+end
+
+
+# this is a utility function to print passkey but we can use it also to print
+# out ADC values...
+procedure print_passkey(data)
+
+    string(0:1) = (data / 100000) + (data / -1000000 * 10) + 48
+    string(1:1) = (data / 10000) + (data / -100000 * 10) + 48
+	string(2:1) = (data / 1000) + (data / -10000 * 10) + 48
+	string(3:1) = (data / 100) + (data / -1000 * 10) + 48
+	string(4:1) = (data / 10) + (data / -100 * 10) + 48
+	string(5:1) = data + (data / 10 * -10) + 48
+	
+	call endpoint_send(endpoint_uart1, 6, string(0:6))
+	
+end 
+
+# function to average signal strength
+procedure average_beacon_strength(tag, currentSignal)
+	if tag = 1 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag01(receivedScanCount_Tag01:1) = currentSignal
+		receivedScanCount_Tag01 = receivedScanCount_Tag01 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag01 > 19 then
+			over10_Tag01 = 1
+			receivedScanCount_Tag01 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag01 = 1 then
+			i = 0
+			sum = 0
+			while i < 20
+				sum = PreSig_Tag01(i:1) + sum
+				i = i + 1
+			end while
+			
+			average_Tag01 = sum / 20
+		else
+			average_Tag01 = 0
+		end if
+	end if
+	
+	if tag = 2 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag02(receivedScanCount_Tag02:1) = currentSignal
+		receivedScanCount_Tag02 = receivedScanCount_Tag02 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag02 > 19 then
+			over10_Tag02 = 1
+			receivedScanCount_Tag02 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag02 = 1 then
+			i2 = 0
+			sum2 = 0
+			while i2 < 20
+				sum2 = PreSig_Tag02(i2:1) + sum2
+				i2 = i2 + 1
+			end while
+			
+			average_Tag02 = sum2 / 20
+		else
+			average_Tag02 = 0
+		end if
+	end if
+	
+		if tag = 3 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag03(receivedScanCount_Tag03:1) = currentSignal
+		receivedScanCount_Tag03 = receivedScanCount_Tag03 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag03 > 19 then
+			over10_Tag03 = 1
+			receivedScanCount_Tag03 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag03 = 1 then
+			i3 = 0
+			sum3 = 0
+			while i3 < 20
+				sum3 = PreSig_Tag03(i3:1) + sum3
+				i3 = i3 + 1
+			end while
+			
+			average_Tag03 = sum3 / 20
+		else
+			average_Tag03 = 0
+		end if
+	end if
+	
+	if tag = 4 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag04(receivedScanCount_Tag04:1) = currentSignal
+		receivedScanCount_Tag04 = receivedScanCount_Tag04 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag04 > 19 then
+			over10_Tag04 = 1
+			receivedScanCount_Tag04 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag04 = 1 then
+			i4 = 0
+			sum4 = 0
+			while i4 < 20
+				sum4 = PreSig_Tag04(i4:1) + sum4
+				i4 = i4 + 1
+			end while
+			
+			average_Tag04 = sum4 / 20
+		else
+			average_Tag04 = 0
+		end if
+	end if
+	
+	if tag = 5 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag05(receivedScanCount_Tag05:1) = currentSignal
+		receivedScanCount_Tag05 = receivedScanCount_Tag05 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag05 > 19 then
+			over10_Tag05 = 1
+			receivedScanCount_Tag05 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag05 = 1 then
+			i5 = 0
+			sum5 = 0
+			while i5 < 20
+				sum5 = PreSig_Tag05(i5:1) + sum5
+				i5 = i5 + 1
+			end while
+			
+			average_Tag05 = sum5 / 20
+		else
+			average_Tag05 = 0
+		end if
+	end if
+
+	if tag = 6 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag06(receivedScanCount_Tag06:1) = currentSignal
+		receivedScanCount_Tag06 = receivedScanCount_Tag06 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag06 > 19 then
+			over10_Tag06 = 1
+			receivedScanCount_Tag06 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag06 = 1 then
+			i6 = 0
+			sum6 = 0
+			while i6 < 20
+				sum6 = PreSig_Tag06(i6:1) + sum6
+				i6 = i6 + 1
+			end while
+			
+			average_Tag06 = sum6 / 20
+		else
+			average_Tag06 = 0
+		end if
+	end if	
+	
+	if tag = 7 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag07(receivedScanCount_Tag07:1) = currentSignal
+		receivedScanCount_Tag07 = receivedScanCount_Tag07 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag07 > 19 then
+			over10_Tag07 = 1
+			receivedScanCount_Tag07 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag07 = 1 then
+			i7 = 0
+			sum7 = 0
+			while i7 < 20
+				sum7 = PreSig_Tag07(i7:1) + sum7
+				i7 = i7 + 1
+			end while
+			
+			average_Tag07 = sum7 / 20
+		else
+			average_Tag07 = 0
+		end if
+	end if	
+
+	if tag = 8 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag08(receivedScanCount_Tag08:1) = currentSignal
+		receivedScanCount_Tag08 = receivedScanCount_Tag08 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag08 > 19 then
+			over10_Tag08 = 1
+			receivedScanCount_Tag08 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag08 = 1 then
+			i8 = 0
+			sum8 = 0
+			while i8 < 20
+				sum8 = PreSig_Tag08(i8:1) + sum8
+				i8 = i8 + 1
+			end while
+			
+			average_Tag08 = sum8 / 20
+		else
+			average_Tag08 = 0
+		end if
+	end if	
+		
+end
+
+
+# A procedure to initialize iBeacon data
+procedure init_iBeacon_data()
+	
+	# Initialize iBeacon advertisement data
+
+	# Flags - See Bluetooth 4.0 Core Specification , Volume 3, Appendix C, 18.1.
+	advdata(0:1) = $BB # determine if side beacon 1
+	advdata(1:1) = $01 # Type of the Flags field.
+	advdata(2:1) = $06 # Flags field. Device in LE General discoverable mode and BR/EDR disabled.
+	
+	# Manufacturer data
+	advdata(3:1) = $1a # Length of the Manufacturer Data field - 26 bytes - 
+	advdata(4:1) = $ff # Data type - manufacturer specific data - Type of the Manufacturer Data field.
+	advdata(5:1) = $00 # Manufacturer data, Battery mV High Byte
+	advdata(6:1) = $00 # Manufacturer data, Battery mV Low Byte
+	advdata(7:1) = $0A # TIIPS
+	advdata(8:1) = $0D # TIIPS
+	advdata(9:1)  = $FF # TIIPS Device Code
+	advdata(10:1) = $01 # TIIPS Device Code
+	advdata(11:1) = $00 # rssi from tag 01
+	advdata(12:1) = $00 # RSSI from tag 2
+	advdata(13:1) = $00 # RSSI from tag 3
+	advdata(14:1) = $00 # RSSI from tag 4
+	advdata(15:1) = $00 # RSSI from tag 5
+	advdata(16:1) = $00 # RSSI from tag 6
+	advdata(17:1) = $00 # RSSI from tag 7
+	advdata(18:1) = $00 # RSSI from tag 8
+	advdata(19:1) = $00
+	advdata(20:1) = $00
+	advdata(21:1) = $00
+	advdata(22:1) = $00
+	advdata(23:1) = $00
+	advdata(24:1) = $00
+	
+	# The Major value, which is used to group related beacons -- NOT NEEDED but leaving 
+	advdata(25:1) = $00
+	advdata(26:1) = $00
+	
+	# The Minor value, which is used to specify individual beacon within a group -- NOT NEEDED
+	advdata(27:1) = $00
+	advdata(28:1) = $00
+	
+	# Signal power (calibrated RSSI) - The Beacon's measured RSSI at 1 meter distance in dBm. 
+	# See the iBeacon specification for measurement guidelines. --??? come back later
+	advdata(29:1) = $c3
+	
+end
+
+# Boot event listener - Generated when the module is powered up or reset
+event system_boot(major, minor, patch, build, bootloader, hw)
+
+    call endpoint_send(endpoint_uart1, 12, "SPP client\r\n")
+    call endpoint_send(endpoint_uart1, 20, "Boot. Build number: ") 
+    call print_passkey(build)
+    call endpoint_send(endpoint_uart1, 2, "\r\n")	
+	call init_iBeacon_data()
+		
+    # Set advertisement interval to 100ms, use all three ADV channels
+	call le_gap_set_adv_parameters(1600,1600,7)
+		
+	# setup timer with 1000ms changed to 4000ms interval
+	call hardware_set_soft_timer(131072,0,0)
+	
+	# init variagles
+	TagId(3:1) = $01
+	TagId(2:1) = $FF
+	TagId(1:1) = $0D
+	TagId(0:1) = $0A
+	
+	# init tag 1 averages
+	PreSig_Tag01(0:9) = 0
+	receivedScanCount_Tag01 = 0
+	over10_Tag01 = 0
+	average_Tag01 = 0
+	
+	PreSig_Tag02(0:9) = 0
+	receivedScanCount_Tag02 = 0
+	over10_Tag02 = 0
+	average_Tag02 = 0
+	
+	PreSig_Tag03(0:9) = 0
+	receivedScanCount_Tag03 = 0
+	over10_Tag03 = 0
+	average_Tag03 = 0
+	
+	PreSig_Tag04(0:9) = 0
+	receivedScanCount_Tag04 = 0
+	over10_Tag04 = 0
+	average_Tag04 = 0
+	
+	PreSig_Tag05(0:9) = 0
+	receivedScanCount_Tag05 = 0
+	over10_Tag05 = 0
+	average_Tag05 = 0
+	
+	PreSig_Tag06(0:9) = 0
+	receivedScanCount_Tag06 = 0
+	over10_Tag06 = 0
+	average_Tag06 = 0
+	
+	PreSig_Tag07(0:9) = 0
+	receivedScanCount_Tag07 = 0
+	over10_Tag07 = 0
+	average_Tag07 = 0
+	
+	PreSig_Tag08(0:9) = 0
+	receivedScanCount_Tag08 = 0
+	over10_Tag08 = 0
+	average_Tag08 = 0
+	
+	# non connectable and non discoverable / changed to send or scan data (le_gap_user_data)
+   	call le_gap_set_mode(le_gap_user_data ,le_gap_non_connectable)	
+	# start discovery scan all devices	 
+	call le_gap_discover(le_gap_discover_observation) 
+end
+
+event hardware_soft_timer(handle)
+	call le_gap_set_adv_data(0, 30, advdata(0:30))
+end
+
+
+# procedure for decoding advertising packets. The list of AD types can be found
+# at: https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile
+procedure decode_adv_data(adv_len, adv_data())
+
+    if(adv_len <= 0)
+		return
+	end if
+	
+	if memcmp( TagId(0) , adv_data(7) , 3 ) then
+		# uart data
+		batteryVoltage = (adv_data(5:1) << 8) | adv_data(6:1)
+		#call endpoint_send(endpoint_uart1, 5, "RSSI: ")
+		#call endpoint_send(endpoint_uart1, 2, SigVal)
+		#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		
+		#decode if it is tag 01
+		if adv_data(11:1) = $01 then
+			# average signal strength
+			call average_beacon_strength(1, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag01 != 0 then
+				advdata(11:1) = average_Tag01
+			end if
+			
+			# print to uart
+			#call endpoint_send(endpoint_uart1, 9, "RSSIAVE: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag01)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if
+		
+		#decode if it is tag 02
+		if adv_data(12:1) = $02 then
+			# average signal strength
+			call average_beacon_strength(2, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag02 != 0 then
+				advdata(12:1) = average_Tag02
+			end if
+			
+			# print to uart
+			#call endpoint_send(endpoint_uart1, 9, "RSSIAVE: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag02)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if
+		
+			#decode if it is tag 03
+			
+		if adv_data(12:1) = $03 then
+			# average signal strength
+			call average_beacon_strength(3, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag03 != 0 then
+				advdata(13:1) = average_Tag03
+			end if
+			
+		end if	
+		
+		
+		if adv_data(12:1) = $04 then
+			# average signal strength
+			call average_beacon_strength(4, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag04 != 0 then
+				advdata(14:1) = average_Tag04
+			end if
+			
+		end if	
+	
+		if adv_data(12:1) = $05 then
+			# average signal strength
+			call average_beacon_strength(5, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag05 != 0 then
+				advdata(15:1) = average_Tag05
+			end if
+		end if		
+
+		if adv_data(12:1) = $06 then
+			# average signal strength
+			call average_beacon_strength(6, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag06 != 0 then
+				advdata(16:1) = average_Tag06
+			end if
+		end if
+
+		if adv_data(12:1) = $07 then
+			# average signal strength
+			call average_beacon_strength(7, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag07 != 0 then
+				advdata(17:1) = average_Tag07
+			end if
+		end if
+
+		if adv_data(12:1) = $08 then
+			# average signal strength
+			call average_beacon_strength(8, SigVal)
+			
+			# advertise signal strength
+			
+			if average_Tag08 != 0 then
+				advdata(18:1) = average_Tag08
+			end if
+		end if
+	
+	end if
+	#bytes 5 and 6 contain the voltage
+end 
+
+event le_gap_scan_response(rssi,packet_type,address,address_type,bonding,data_len, data_data)
+
+    SigVal = -1 * rssi
+	
+    #call endpoint_send(endpoint_uart1, 12, "scan resp: ")  
+	#call print_hex(address(0:1))
+	#call print_hex(address(1:1))
+	#call print_hex(address(2:1))
+	#call print_hex(address(3:1))
+	#call print_hex(address(4:1))
+	#call print_hex(address(5:1))
+	#call endpoint_send(endpoint_uart1, 2, "\r\n")
+
+	# decode adveritsing data to see if we found what we are looking for.
+	# if match is found, ad_match_found variable is set to positive value
+	call decode_adv_data(data_len, data_data(0:data_len))
+    
+    # call le_gap_end_procedure() 
+end 
+
+# End of BGScript

@@ -1,0 +1,1732 @@
+# Description - Master Beacon Code
+# Created by Nile Morecraft and Alex Rens
+# Most recent revision: 3/31/17
+##############################################
+
+#allow connection to phone
+import "ble_att_handler.bgs"
+
+# Constants:
+const endpoint_uart1   = 2
+
+# LED0 is mapped to pin F6
+const led_bank      = 5
+const led_pin_mask  = $40
+
+# Variables:
+dim connected
+dim conn_handle
+dim batteryVoltage
+dim n
+dim string(6)
+dim TagId(5)
+dim SigVal
+dim RSSIBeacon1Tag1
+dim RSSIBeacon2Tag1
+dim RSSIBeacon3Tag1
+
+dim RSSIBeacon1Tag2
+dim RSSIBeacon2Tag2
+dim RSSIBeacon3Tag2
+
+dim RSSIBeacon1Tag3
+dim RSSIBeacon2Tag3
+dim RSSIBeacon3Tag3
+
+dim RSSIBeacon1Tag4
+dim RSSIBeacon2Tag4
+dim RSSIBeacon3Tag4
+
+dim RSSIBeacon1Tag5
+dim RSSIBeacon2Tag5
+dim RSSIBeacon3Tag5
+
+dim RSSIBeacon1Tag6
+dim RSSIBeacon2Tag6
+dim RSSIBeacon3Tag6
+
+dim RSSIBeacon1Tag7
+dim RSSIBeacon2Tag7
+dim RSSIBeacon3Tag7
+
+dim RSSIBeacon1Tag8
+dim RSSIBeacon2Tag8
+dim RSSIBeacon3Tag8
+
+const TAGS_SIZE = 22
+dim tags_t01(22) 
+dim tags_t02(22) 
+dim tags_t03(22)
+dim tags_t04(22)
+dim tags_t05(22)
+dim tags_t06(22)
+dim tags_t07(22)
+dim tags_t08(22)
+dim battery1
+dim battery2
+dim a
+dim b
+dim c 
+dim d
+dim e 
+dim f
+dim PreSig_Tag01(20)
+dim receivedScanCount_Tag01
+dim over10_Tag01
+dim average_Tag01
+dim sum
+
+dim i
+dim t
+dim t2
+dim t3
+dim t4
+dim t5
+dim t6
+dim t7
+dim t8
+
+dim side1
+dim side1tag2
+dim side1tag3
+dim side1tag4
+dim side1tag5
+dim side1tag6
+dim side1tag7
+dim side1tag8
+
+dim side2
+dim side2tag2
+dim side2tag3
+dim side2tag4
+dim side2tag5
+dim side2tag6
+dim side2tag7
+dim side2tag8
+
+dim side3
+dim side3tag2
+dim side3tag3
+dim side3tag4
+dim side3tag5
+dim side3tag6
+dim side3tag7
+dim side3tag8
+
+
+dim PreSig_Tag02(20)
+dim receivedScanCount_Tag02
+dim over10_Tag02
+dim average_Tag02
+dim sum2
+dim i2
+dim PreSig_Tag03(20)
+dim receivedScanCount_Tag03
+dim over10_Tag03
+dim average_Tag03
+dim sum3
+dim i3
+dim PreSig_Tag04(20)
+dim receivedScanCount_Tag04
+dim over10_Tag04
+dim average_Tag04
+dim sum4
+dim i4
+dim PreSig_Tag05(20)
+dim receivedScanCount_Tag05
+dim over10_Tag05
+dim average_Tag05
+dim sum5
+dim i5
+dim PreSig_Tag06(20)
+dim receivedScanCount_Tag06
+dim over10_Tag06
+dim average_Tag06
+dim sum6
+dim i6
+dim PreSig_Tag07(20)
+dim receivedScanCount_Tag07
+dim over10_Tag07
+dim average_Tag07
+dim sum7
+dim i7
+dim PreSig_Tag08(20)
+dim receivedScanCount_Tag08
+dim over10_Tag08
+dim average_Tag08
+dim sum8
+dim i8
+
+
+
+
+
+# print a nibble (4 bits)
+procedure print_nibble(nibble)
+
+	n = nibble
+
+	if n < $a then
+		n = n + $30
+	else
+		n = n + $37
+	end if
+
+	call endpoint_send(endpoint_uart1, 1, n)
+end
+# print hex values (range 0..255 -> output 0x00..0xFF)
+procedure print_hex(hex)
+	call print_nibble(hex/16)
+	call print_nibble(hex&$f)
+end
+
+
+# this is a utility function to print passkey but we can use it also to print
+# out ADC values...
+procedure print_passkey(data)
+
+    string(0:1) = (data / 100000) + (data / -1000000 * 10) + 48
+    string(1:1) = (data / 10000) + (data / -100000 * 10) + 48
+	string(2:1) = (data / 1000) + (data / -10000 * 10) + 48
+	string(3:1) = (data / 100) + (data / -1000 * 10) + 48
+	string(4:1) = (data / 10) + (data / -100 * 10) + 48
+	string(5:1) = data + (data / 10 * -10) + 48
+	
+	call endpoint_send(endpoint_uart1, 6, string(0:6))
+	
+end 
+
+
+# function to average signal strength
+procedure average_beacon_strength(tag, currentSignal)
+	if tag = 1 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag01(receivedScanCount_Tag01:1) = currentSignal
+		receivedScanCount_Tag01 = receivedScanCount_Tag01 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag01 > 19 then
+			over10_Tag01 = 1
+			receivedScanCount_Tag01 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag01 = 1 then
+			i = 0
+			sum = 0
+			while i < 20
+				sum = PreSig_Tag01(i:1) + sum
+				i = i + 1
+			end while
+			
+			average_Tag01 = sum / 20
+		else
+			average_Tag01 = 0
+		end if
+	end if
+	
+	if tag = 2 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag02(receivedScanCount_Tag02:1) = currentSignal
+		receivedScanCount_Tag02 = receivedScanCount_Tag02 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag02 > 19 then
+			over10_Tag02 = 1
+			receivedScanCount_Tag02 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag02 = 1 then
+			i2 = 0
+			sum2 = 0
+			while i2 < 20
+				sum2 = PreSig_Tag02(i2:1) + sum2
+				i2 = i2 + 1
+			end while
+			
+			average_Tag02 = sum2 / 20
+		else
+			average_Tag02 = 0
+		end if
+	end if
+	
+	if tag = 3 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag03(receivedScanCount_Tag03:1) = currentSignal
+		receivedScanCount_Tag03 = receivedScanCount_Tag03 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag03 > 19 then
+			over10_Tag03 = 1
+			receivedScanCount_Tag03 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag03 = 1 then
+			i3 = 0
+			sum3 = 0
+			while i3 < 20
+				sum3 = PreSig_Tag03(i3:1) + sum3
+				i3 = i3 + 1
+			end while
+			
+			average_Tag03 = sum3 / 20
+		else
+			average_Tag03 = 0
+		end if
+	end if
+	
+	if tag = 4 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag04(receivedScanCount_Tag04:1) = currentSignal
+		receivedScanCount_Tag04 = receivedScanCount_Tag04 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag04 > 19 then
+			over10_Tag04 = 1
+			receivedScanCount_Tag04 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag04 = 1 then
+			i4 = 0
+			sum4 = 0
+			while i4 < 20
+				sum4 = PreSig_Tag04(i4:1) + sum4
+				i4 = i4 + 1
+			end while
+			
+			average_Tag04 = sum4 / 20
+		else
+			average_Tag04 = 0
+		end if
+	end if
+	
+	if tag = 5 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag05(receivedScanCount_Tag05:1) = currentSignal
+		receivedScanCount_Tag05 = receivedScanCount_Tag05 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag05 > 19 then
+			over10_Tag05 = 1
+			receivedScanCount_Tag05 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag05 = 1 then
+			i5 = 0
+			sum5 = 0
+			while i5 < 20
+				sum5 = PreSig_Tag05(i5:1) + sum5
+				i5 = i5 + 1
+			end while
+			
+			average_Tag05 = sum5 / 20
+		else
+			average_Tag05 = 0
+		end if
+	end if
+
+	if tag = 6 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag06(receivedScanCount_Tag06:1) = currentSignal
+		receivedScanCount_Tag06 = receivedScanCount_Tag06 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag06 > 19 then
+			over10_Tag06 = 1
+			receivedScanCount_Tag06 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag06 = 1 then
+			i6 = 0
+			sum6 = 0
+			while i6 < 20
+				sum6 = PreSig_Tag06(i6:1) + sum6
+				i6 = i6 + 1
+			end while
+			
+			average_Tag06 = sum6 / 20
+		else
+			average_Tag06 = 0
+		end if
+	end if	
+	
+	if tag = 7 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag07(receivedScanCount_Tag07:1) = currentSignal
+		receivedScanCount_Tag07 = receivedScanCount_Tag07 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag07 > 19 then
+			over10_Tag07 = 1
+			receivedScanCount_Tag07 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag07 = 1 then
+			i7 = 0
+			sum7 = 0
+			while i7 < 20
+				sum7 = PreSig_Tag07(i7:1) + sum7
+				i7 = i7 + 1
+			end while
+			
+			average_Tag07 = sum7 / 20
+		else
+			average_Tag07 = 0
+		end if
+	end if	
+
+	if tag = 8 then
+		# put current signal in buffer at count, increment count
+		PreSig_Tag08(receivedScanCount_Tag08:1) = currentSignal
+		receivedScanCount_Tag08 = receivedScanCount_Tag08 + 1
+		
+		# if count is ten, set over10 flag and restart count
+		if receivedScanCount_Tag08 > 19 then
+			over10_Tag08 = 1
+			receivedScanCount_Tag08 = 0
+		end if
+		
+		# check flag to see if averaging is available
+		if over10_Tag08 = 1 then
+			i8 = 0
+			sum8 = 0
+			while i8 < 20
+				sum8 = PreSig_Tag08(i8:1) + sum8
+				i8 = i8 + 1
+			end while
+			
+			average_Tag08 = sum8 / 20
+		else
+			average_Tag08 = 0
+		end if
+	end if		
+	
+end
+
+
+# Boot event listener - Generated when the module is powered up or reset
+event system_boot(major, minor, patch, build, bootloader, hw)
+	
+	# Set bigger MTU to speed up transfer data
+	call gatt_set_max_mtu(MTU_SIZE)
+
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle
+	
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED
+    call endpoint_send(endpoint_uart1, 12, "SPP client\r\n")
+    call endpoint_send(endpoint_uart1, 20, "Boot. Build number: ") 
+    call print_passkey(build)
+    call endpoint_send(endpoint_uart1, 2, "\r\n")
+	
+			
+	TagId(3:1) = $01
+	TagId(2:1) = $FF
+	TagId(1:1) = $0D
+	TagId(0:1) = $0A
+	
+	# non connectable and non discoverable
+   	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)	
+	# start discovery scan all devices	 
+	call le_gap_discover(le_gap_discover_observation) 
+	
+	# init tag 1 averages
+	PreSig_Tag01(0:9) = 0
+	receivedScanCount_Tag01 = 0
+	over10_Tag01 = 0
+	average_Tag01 = 0
+	
+	PreSig_Tag02(0:9) = 0
+	receivedScanCount_Tag02 = 0
+	over10_Tag02 = 0
+	average_Tag02 = 0
+	
+	PreSig_Tag03(0:9) = 0
+	receivedScanCount_Tag03 = 0
+	over10_Tag03 = 0
+	average_Tag03 = 0
+	
+	PreSig_Tag04(0:9) = 0
+	receivedScanCount_Tag04 = 0
+	over10_Tag04 = 0
+	average_Tag04 = 0
+	
+	PreSig_Tag05(0:9) = 0
+	receivedScanCount_Tag05 = 0
+	over10_Tag05 = 0
+	average_Tag05 = 0
+	
+	PreSig_Tag06(0:9) = 0
+	receivedScanCount_Tag06 = 0
+	over10_Tag06 = 0
+	average_Tag06 = 0
+	
+	PreSig_Tag07(0:9) = 0
+	receivedScanCount_Tag07 = 0
+	over10_Tag07 = 0
+	average_Tag07 = 0
+	
+	PreSig_Tag08(0:9) = 0
+	receivedScanCount_Tag08 = 0
+	over10_Tag08 = 0
+	average_Tag08 = 0
+	
+	t = 0
+	t2 = 0
+	t3 = 0
+	t4 = 0
+	t5 = 0 
+	t6 = 0
+	t7 = 0
+	t8 = 0
+	side1 = 0
+	side2 = 0
+	side3 = 0
+	
+ side1tag2 = 0 
+ side1tag3 = 0 
+ side1tag4 = 0 
+ side1tag5 = 0 
+ side1tag6 = 0 
+ side1tag7 = 0 
+ side1tag8 = 0 
+
+
+ side2tag2 = 0 
+ side2tag3 = 0 
+ side2tag4 = 0 
+ side2tag5 = 0 
+ side2tag6 = 0 
+ side2tag7 = 0 
+ side2tag8 = 0 
+
+ 
+ side3tag2 = 0 
+ side3tag3 = 0 
+ side3tag4 = 0 
+ side3tag5 = 0 
+ side3tag6 = 0 
+ side3tag7 = 0 
+ side3tag8 = 0 
+
+end
+
+event le_connection_opened(address,address_type,master,connection,bonding)
+
+	# Request connection parameters update according to Apple guidelines to save power while connected
+	# https://developer.apple.com/hardwaredrivers/BluetoothDesignGuidelines.pdf
+	# Min: 875ms, Max: 950ms, latency 1, timeout: 6000ms
+	#call le_connection_set_parameters(connection, $02bc, $0640, $0001, $0c80)
+	  
+	# TODO: Add your own code here
+end
+
+event le_connection_closed(reason,connection)
+
+ 
+	# Set default max payload data = 23(Default MTU) - 1
+	maxPayload = 22
+
+	# Set undefined connection handle
+	attHandler_connection = CONNECTION_HANDLE_UNDEFINED
+
+	# TODO: Add your own code here.
+
+	# Restart advertising
+	call le_gap_set_mode(le_gap_general_discoverable ,le_gap_undirected_connectable)
+end
+
+
+
+
+# procedure for decoding advertising packets. The list of AD types can be found
+# at: https://www.bluetooth.com/specifications/assigned-numbers/Generic-Access-Profile
+procedure decode_adv_data(adv_len, adv_data())
+
+    if(adv_len <= 0)
+		return
+	end if
+	
+	if memcmp( TagId(0) , adv_data(7) , 3 ) then
+		
+		#batteryVoltage = (adv_data(5:1) << 8) | adv_data(6:1)
+		#call endpoint_send(endpoint_uart1, 11, "volt resp: ")  
+		#call endpoint_send(endpoint_uart1, 2, batteryVoltage) 
+		#call endpoint_send(endpoint_uart1, 2, "\r\n") 
+		#call endpoint_send(endpoint_uart1, 5, "RSSI: ")
+		#call endpoint_send(endpoint_uart1, 2, SigVal)
+		#call endpoint_send(endpoint_uart1, 2, "\r\n")
+	
+		#tag 1
+		if adv_data(11:1) = $01 then  
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t01(0:1) = battery1
+			tags_t01(1:1) = battery2
+			
+			# average signal strength
+			call average_beacon_strength(1, SigVal)
+
+		#batteryVoltage = (adv_data(5:1) << 8) | adv_data(6:1)
+		#call endpoint_send(endpoint_uart1, 11, "volt resp: ")  
+		#call endpoint_send(endpoint_uart1, 2, batteryVoltage) 
+		#call endpoint_send(endpoint_uart1, 2, "\r\n") 			
+			# print to uart or put in connectable packet to phone
+			
+			if i > 15 then
+				if t = 0
+					tags_t01(2:1) = average_Tag01
+					t = t + 1
+				end if
+			end if
+			
+			if i > 15 then
+				if t = 1
+					tags_t01(3:1) = average_Tag01
+					t = t + 1
+				end if
+			end if
+			
+			if i > 15 then
+				if t = 2
+					tags_t01(4:1) = average_Tag01
+					t = t + 1
+				end if
+			end if
+			
+			if i > 15 then
+				if t = 3
+					tags_t01(5:1) = average_Tag01
+					t = t + 1
+				end if
+			end if
+			
+			if i > 15 then
+				if t = 4
+					tags_t01(6:1) = average_Tag01 
+					t = 0
+				end if
+			end if
+			
+			call endpoint_send(endpoint_uart1, 6, "master")
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call endpoint_send(endpoint_uart1, 22, tags_t01(0:22))
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+			#call endpoint_send(endpoint_uart1, 9, "Tag01: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag01)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if
+		
+		#tag 2
+		if adv_data(12:1) = $02 then
+			# average signal strength
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t02(0:1) = battery1
+			tags_t02(1:1) = battery2
+			
+			call average_beacon_strength(2, SigVal)
+						
+			# print to uart
+			if i2 > 15 then
+				if t2 = 0
+					tags_t02(2:1) = average_Tag02
+					t2 = t2 + 1
+				end if
+			end if 
+			
+			if i2 > 15 then
+				if t2 = 1
+					tags_t02(3:1) = average_Tag02
+					t2 = t2 + 1
+				end if
+			end if
+			
+			if i2 > 15 then
+				if t2 = 2
+					tags_t02(4:1) = average_Tag02
+					t2 = t2+ 1
+				end if 
+			end if
+			
+			if i2 > 15 then
+				if t2 = 3
+					tags_t02(5:1) = average_Tag02
+					t2 = t2 + 1
+				end if
+			end if
+			
+			if i2 > 15 then
+				if t2 = 4
+					tags_t02(6:1) = average_Tag02
+					t2 = 0
+				end if
+			end if
+			
+			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+		end if
+		
+		#tag 3
+		if adv_data(12:1) = $03 then
+		
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t03(0:1) = battery1
+			tags_t03(1:1) = battery2
+			# average signal strength
+			call average_beacon_strength(3, SigVal)
+						
+			# print to uart
+			if i3 > 15 then
+				if t3 = 0
+					tags_t03(2:1) = average_Tag03
+					t3 = t3 + 1
+				end if
+			end if 
+			
+			if i3 > 15 then
+				if t3 = 1
+					tags_t03(3:1) = average_Tag03
+					t3 = t3 + 1
+				end if
+			end if
+			
+			if i3 > 15 then
+				if t3 = 2
+					tags_t03(4:1) = average_Tag03
+					t3 = t3+ 1
+				end if 
+			end if
+			
+			if i3 > 15 then
+				if t3 = 3
+					tags_t03(5:1) = average_Tag03
+					t3 = t3 + 1
+				end if
+			end if
+			
+			if i3 > 15 then
+				if t3 = 4
+					tags_t03(6:1) = average_Tag03
+					t3 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+			#call endpoint_send(endpoint_uart1, 9, "Tag02: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag02)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if
+		
+		#tag 4
+		if adv_data(12:1) = $04 then
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t04(0:1) = battery1
+			tags_t04(1:1) = battery2
+			# average signal strength
+			call average_beacon_strength(4, SigVal)
+						
+			# print to uart
+			if i4 > 15 then
+				if t4 = 0
+					tags_t04(2:1) = average_Tag04
+					t4 = t4 + 1
+				end if
+			end if 
+			
+			if i4 > 15 then
+				if t4 = 1
+					tags_t04(3:1) = average_Tag04
+					t4 = t4 + 1
+				end if
+			end if
+			
+			if i4 > 15 then
+				if t4 = 2
+					tags_t04(4:1) = average_Tag04
+					t4 = t4+ 1
+				end if 
+			end if
+			
+			if i4 > 15 then
+				if t4 = 3
+					tags_t04(5:1) = average_Tag04
+					t4 = t4 + 1
+				end if
+			end if
+			
+			if i4 > 15 then
+				if t4 = 4
+					tags_t04(6:1) = average_Tag04
+					t4 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+
+		end if		
+		
+		#tag 5
+		if adv_data(12:1) = $05 then
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t05(0:1) = battery1
+			tags_t05(1:1) = battery2
+			# average signal strength
+			call average_beacon_strength(5, SigVal)
+						
+			# print to uart
+			if i5 > 15 then
+				if t5 = 0
+					tags_t05(2:1) = average_Tag05
+					t5 = t5 + 1
+				end if
+			end if 
+			
+			if i5 > 15 then
+				if t5 = 1
+					tags_t05(3:1) = average_Tag05
+					t5 = t5 + 1
+				end if
+			end if
+			
+			if i5 > 15 then
+				if t5 = 2
+					tags_t05(4:1) = average_Tag05
+					t5 = t5+ 1
+				end if 
+			end if
+			
+			if i5 > 15 then
+				if t5 = 3
+					tags_t05(5:1) = average_Tag05
+					t5 = t5 + 1
+				end if
+			end if
+			
+			if i5 > 15 then
+				if t5 = 4
+					tags_t05(6:1) = average_Tag05
+					t5 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+
+		end if		
+		
+		#tag 6
+		if adv_data(12:1) = $06 then
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t06(0:1) = battery1
+			tags_t06(1:1) = battery2
+			# average signal strength
+			call average_beacon_strength(6, SigVal)
+						
+			# print to uart
+			if i6 > 15 then
+				if t6 = 0
+					tags_t06(2:1) = average_Tag06
+					t6 = t6 + 1
+				end if
+			end if 
+			
+			if i6 > 15 then
+				if t6 = 1
+					tags_t06(3:1) = average_Tag06
+					t6 = t6 + 1
+				end if
+			end if
+			
+			if i6 > 15 then
+				if t6 = 2
+					tags_t06(4:1) = average_Tag06
+					t6 = t6+ 1
+				end if 
+			end if
+			
+			if i6 > 15 then
+				if t6 = 3
+					tags_t06(5:1) = average_Tag06
+					t6 = t6 + 1
+				end if
+			end if
+			
+			if i6 > 15 then
+				if t6 = 4
+					tags_t06(6:1) = average_Tag06
+					t6 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+			#call endpoint_send(endpoint_uart1, 9, "Tag02: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag02)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if				
+
+		#tag 7
+		if adv_data(12:1) = $07 then
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t07(0:1) = battery1
+			tags_t07(1:1) = battery2			
+			# average signal strength
+			call average_beacon_strength(7, SigVal)
+						
+			# print to uart
+			if i7 > 15 then
+				if t7 = 0
+					tags_t07(2:1) = average_Tag07
+					t7 = t7 + 1
+				end if
+			end if 
+			
+			if i7 > 15 then
+				if t7 = 1
+					tags_t07(3:1) = average_Tag07
+					t7 = t7 + 1
+				end if
+			end if
+			
+			if i7 > 15 then
+				if t7 = 2
+					tags_t07(4:1) = average_Tag07
+					t7 = t7+ 1
+				end if 
+			end if
+			
+			if i7 > 15 then
+				if t7 = 3
+					tags_t07(5:1) = average_Tag07
+					t7 = t7 + 1
+				end if
+			end if
+			
+			if i7 > 15 then
+				if t7 = 4
+					tags_t07(6:1) = average_Tag07
+					t7 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+			#call endpoint_send(endpoint_uart1, 9, "Tag02: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag02)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if	
+
+		#tag 8
+		if adv_data(12:1) = $08 then
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			tags_t08(0:1) = battery1
+			tags_t08(1:1) = battery2			
+			# average signal strength
+			call average_beacon_strength(8, SigVal)
+						
+			# print to uart
+			if i8 > 15 then
+				if t8 = 0
+					tags_t08(2:1) = average_Tag08
+					t8 = t8 + 1
+				end if
+			end if 
+			
+			if i8 > 15 then
+				if t8 = 1
+					tags_t08(3:1) = average_Tag08
+					t8 = t8 + 1
+				end if
+			end if
+			
+			if i8 > 15 then
+				if t8 = 2
+					tags_t08(4:1) = average_Tag08
+					t8 = t8 + 1
+				end if 
+			end if
+			
+			if i8 > 15 then
+				if t8 = 3
+					tags_t08(5:1) = average_Tag08
+					t8 = t8 + 1
+				end if
+			end if
+			
+			if i8 > 15 then
+				if t8 = 4
+					tags_t08(6:1) = average_Tag08
+					t8 = 0
+				end if
+			end if
+	
+			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+			#call endpoint_send(endpoint_uart1, 9, "Tag02: ")
+			#call endpoint_send(endpoint_uart1, 2, average_Tag02)
+			#call endpoint_send(endpoint_uart1, 2, "\r\n")
+		end if	
+		
+		#beacon repeater data # beacon 1 ######################################################################## side 1
+		if adv_data(0:1) = $BB then
+		
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			xgatt_beacon1(0:1) = battery1
+			xgatt_beacon1(1:1) = battery2
+		
+			RSSIBeacon1Tag1 = adv_data(11:1)
+			
+			if side1 = 0 then
+				tags_t01(7:1) = RSSIBeacon1Tag1
+				side1 = side1 + 1
+			end if
+			
+			if side1 = 1 then
+				tags_t01(8:1) = RSSIBeacon1Tag1
+				side1 = side1 + 1
+			end if
+			
+			if side1 = 2 then
+				tags_t01(9:1) = RSSIBeacon1Tag1
+				side1 = side1 + 1
+			end if
+			
+			if side1 = 3 then
+				tags_t01(10:1) = RSSIBeacon1Tag1
+				side1 = side1 + 1
+			end if
+			
+			if side1 = 4 then
+				tags_t01(11:1) = RSSIBeacon1Tag1
+				side1 = 0
+			end if
+			
+			call endpoint_send(endpoint_uart1, 5, "side1")
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call endpoint_send(endpoint_uart1, 22, tags_t01(0:22))
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+			######################################### tag 2
+			RSSIBeacon1Tag2 = adv_data(12:1)
+			
+			if side1tag2 = 0 then
+				tags_t02(7:1) = RSSIBeacon1Tag2
+				side1tag2 = side1tag2 + 1
+			end if
+			
+			if side1tag2 = 1 then
+				tags_t02(8:1) = RSSIBeacon1Tag2
+				side1tag2 = side1tag2 + 1
+			end if
+			
+			if side1tag2 = 2 then
+				tags_t02(9:1) = RSSIBeacon1Tag2
+				side1tag2 = side1tag2 + 1
+			end if
+			
+			if side1tag2 = 3 then
+				tags_t02(10:1) = RSSIBeacon1Tag2
+				side1tag2= side1tag2 + 1
+			end if
+			
+			if side1tag2 = 4 then
+				tags_t02(11:1) = RSSIBeacon1Tag2
+				side1tag2 = 0
+			end if
+			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+			######################################### tag 3 side 1
+			RSSIBeacon1Tag3 = adv_data(13:1)
+			
+			if side1tag3 = 0 then
+				tags_t03(7:1) = RSSIBeacon1Tag3
+				side1tag3 = side1tag3 + 1
+			end if
+			
+			if side1tag3  = 1 then
+				tags_t03(8:1) = RSSIBeacon1Tag3
+				side1tag3 = side1tag3 + 1
+			end if
+			
+			if side1tag3  = 2 then
+				tags_t03(9:1) = RSSIBeacon1Tag3
+				side1tag3 = side1tag3 + 1
+			end if
+			
+			if side1tag3  = 3 then
+				tags_t03(10:1) = RSSIBeacon1Tag3
+				side1tag3 = side1tag3 + 1
+			end if
+			
+			if side1tag3  = 4 then
+				tags_t03(11:1) = RSSIBeacon1Tag3
+				side1tag3 = 0
+			end if	
+			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+			######################################### tag 4 side 1
+			RSSIBeacon1Tag4 = adv_data(14:1)
+			
+			if side1tag4 = 0 then
+				tags_t04(7:1) = RSSIBeacon1Tag4
+				side1tag4 = side1tag4 + 1
+			end if
+			
+			if side1tag4 = 1 then
+				tags_t04(8:1) = RSSIBeacon1Tag4
+				side1tag4 = side1tag4 + 1
+			end if
+			
+			if side1tag4 = 2 then
+				tags_t04(9:1) = RSSIBeacon1Tag4
+				side1tag4 = side1tag4 + 1
+			end if
+			
+			if side1tag4 = 3 then
+				tags_t04(10:1) = RSSIBeacon1Tag4
+				side1tag4 = side1tag4 + 1
+			end if
+			
+			if side1tag4 = 4 then
+				tags_t04(11:1) = RSSIBeacon1Tag4
+				side1tag4 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+			######################################### tag 5 side 1
+			RSSIBeacon1Tag5 = adv_data(15:1)
+			
+			if side1tag5 = 0 then
+				tags_t05(7:1) = RSSIBeacon1Tag5
+				side1tag5 = side1tag5 + 1
+			end if
+			
+			if side1tag5 = 1 then
+				tags_t05(8:1) = RSSIBeacon1Tag5
+				side1tag5 = side1tag5 + 1
+			end if
+			
+			if side1tag5 = 2 then
+				tags_t05(9:1) = RSSIBeacon1Tag5
+				side1tag5 = side1tag5 + 1
+			end if
+			
+			if side1tag5 = 3 then
+				tags_t05(10:1) = RSSIBeacon1Tag5
+				side1tag5 = side1tag5 + 1
+			end if
+			
+			if side1tag5 = 4 then
+				tags_t05(11:1) = RSSIBeacon1Tag5
+				side1tag5 = 0
+			end if		
+			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+			######################################### tag 6 side 1
+			RSSIBeacon1Tag6 = adv_data(16:1)
+			
+			if side1tag6 = 0 then
+				tags_t06(7:1) = RSSIBeacon1Tag6
+				side1tag6 = side1tag6 + 1
+			end if
+			
+			if side1tag6 = 1 then
+				tags_t06(8:1) = RSSIBeacon1Tag6
+				side1tag6 = side1tag6 + 1
+			end if
+			
+			if side1tag6 = 2 then
+				tags_t06(9:1) = RSSIBeacon1Tag6
+				side1tag6 = side1tag6 + 1
+			end if
+			
+			if side1tag6 = 3 then
+				tags_t06(10:1) = RSSIBeacon1Tag6
+				side1tag6 = side1tag6 + 1
+			end if
+			
+			if side1tag6 = 4 then
+				tags_t06(11:1) = RSSIBeacon1Tag6
+				side1tag6 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+			######################################### tag 7 side 1
+			
+			RSSIBeacon1Tag7 = adv_data(17:1)
+			
+			if side1tag7 = 0 then
+				tags_t07(7:1) = RSSIBeacon1Tag7
+				side1tag7 = side1tag7 + 1
+			end if
+			
+			if side1tag7 = 1 then
+				tags_t07(8:1) = RSSIBeacon1Tag7
+				side1tag7 = side1tag7 + 1
+			end if
+			
+			if side1tag7 = 2 then
+				tags_t07(9:1) = RSSIBeacon1Tag7
+				side1tag7 = side1tag7 + 1
+			end if
+			
+			if side1tag7 = 3 then
+				tags_t07(10:1) = RSSIBeacon1Tag7
+				side1tag7 = side1tag7 + 1
+			end if
+			
+			if side1tag7 = 4 then
+				tags_t07(11:1) = RSSIBeacon1Tag7
+				side1tag7 = 0
+			end if			
+			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+			######################################### tag 8 side 1
+			RSSIBeacon1Tag8 = adv_data(18:1)
+			
+			if side1tag8 = 0 then
+				tags_t08(7:1) = RSSIBeacon1Tag8
+				side1tag8 = side1tag8 + 1
+			end if
+			
+			if side1tag8 = 1 then
+				tags_t08(8:1) = RSSIBeacon1Tag8
+				side1tag8 = side1tag8 + 1
+			end if
+			
+			if side1tag8 = 2 then
+				tags_t08(9:1) = RSSIBeacon1Tag8
+				side1tag8 = side1tag8 + 1
+			end if
+			
+			if side1tag8 = 3 then
+				tags_t08(10:1) = RSSIBeacon1Tag8
+				side1tag8 = side1tag8 + 1
+			end if
+			
+			if side1tag8 = 4 then
+				tags_t08(11:1) = RSSIBeacon1Tag8
+				side1tag8 = 0
+			end if				
+			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+		end if				
+	############################################################################################################################################################## side beacon 2
+		if adv_data(0:1)= $CC then
+		
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			xgatt_beacon2(0:1) = battery1
+			xgatt_beacon2(1:1) = battery2
+		
+		
+			RSSIBeacon2Tag1 = adv_data(11:1)
+
+			
+			if side2 = 0 then
+				tags_t01(12:1) = RSSIBeacon2Tag1
+				side2 = side2 + 1
+			end if
+			
+			if side2 = 1 then
+				tags_t01(13:1) = RSSIBeacon2Tag1
+				side2 = side2 + 1
+			end if
+			
+			if side2 = 2 then
+				tags_t01(14:1) = RSSIBeacon2Tag1
+				side2 = side2 + 1
+			end if
+			
+			if side2 = 3 then
+				tags_t01(15:1) = RSSIBeacon2Tag1
+				side2 = side2 + 1
+			end if
+			
+			if side2 = 4 then
+				tags_t01(16:1) = RSSIBeacon2Tag1
+				side2 = 0
+			end if
+			
+			call endpoint_send(endpoint_uart1, 6, "side 2")
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call endpoint_send(endpoint_uart1, 22, tags_t01(0:22))
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+			######################################### tag 2
+			RSSIBeacon2Tag2 = adv_data(12:1)
+			
+			if side2tag2 = 0 then
+				tags_t02(12:1) = RSSIBeacon2Tag2
+				side2tag2 = side2tag2 + 1
+			end if
+			
+			if side2tag2 = 1 then
+				tags_t02(13:1) = RSSIBeacon2Tag2
+				side2tag2 = side2tag2 + 1
+			end if
+			
+			if side2tag2 = 2 then
+				tags_t02(14:1) = RSSIBeacon2Tag2
+				side2tag2 = side2tag2 + 1
+			end if
+			
+			if side2tag2 = 3 then
+				tags_t02(15:1) = RSSIBeacon2Tag2
+				side2tag2= side2tag2 + 1
+			end if
+			
+			if side2tag2 = 4 then
+				tags_t02(16:1) = RSSIBeacon2Tag2
+				side2tag2 = 0
+			end if
+			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+			######################################### tag 3 side 2
+			RSSIBeacon2Tag3 = adv_data(13:1)
+			
+			if side2tag3 = 0 then
+				tags_t03(12:1) = RSSIBeacon2Tag3
+				side2tag3 = side2tag3 + 1
+			end if
+			
+			if side2tag3  = 1 then
+				tags_t03(13:1) = RSSIBeacon2Tag3
+				side2tag3 = side2tag3 + 1
+			end if
+			
+			if side2tag3  = 2 then
+				tags_t03(14:1) = RSSIBeacon2Tag3
+				side2tag3 = side2tag3 + 1
+			end if
+			
+			if side2tag3  = 3 then
+				tags_t03(15:1) = RSSIBeacon2Tag3
+				side2tag3 = side2tag3 + 1
+			end if
+			
+			if side2tag3  = 4 then
+				tags_t03(16:1) = RSSIBeacon2Tag3
+				side2tag3 = 0
+			end if	
+			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+			######################################### tag 4 side 2
+			RSSIBeacon2Tag4 = adv_data(14:1)
+			
+			if side2tag4 = 0 then
+				tags_t04(12:1) = RSSIBeacon2Tag4
+				side2tag4 = side2tag4 + 1
+			end if
+			
+			if side2tag4 = 1 then
+				tags_t04(13:1) = RSSIBeacon2Tag4
+				side2tag4 = side2tag4 + 1
+			end if
+			
+			if side2tag4 = 2 then
+				tags_t04(14:1) = RSSIBeacon2Tag4
+				side2tag4 = side2tag4 + 1
+			end if
+			
+			if side2tag4 = 3 then
+				tags_t04(15:1) = RSSIBeacon2Tag4
+				side2tag4 = side2tag4 + 1
+			end if
+			
+			if side2tag4 = 4 then
+				tags_t04(16:1) = RSSIBeacon2Tag4
+				side2tag4 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+			######################################### tag 5 side 2
+			RSSIBeacon2Tag5 = adv_data(15:1)
+			
+			if side2tag5 = 0 then
+				tags_t05(12:1) = RSSIBeacon2Tag5
+				side2tag5 = side2tag5 + 1
+			end if
+			
+			if side2tag5 = 1 then
+				tags_t05(13:1) = RSSIBeacon2Tag5
+				side2tag5 = side2tag5 + 1
+			end if
+			
+			if side2tag5 = 2 then
+				tags_t05(14:1) = RSSIBeacon2Tag5
+				side2tag5 = side2tag5 + 1
+			end if
+			
+			if side2tag5 = 3 then
+				tags_t05(15:1) = RSSIBeacon2Tag5
+				side2tag5 = side2tag5 + 1
+			end if
+			
+			if side2tag5 = 4 then
+				tags_t05(16:1) = RSSIBeacon2Tag5
+				side2tag5 = 0
+			end if		
+			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+			######################################### tag 6 side 2
+			RSSIBeacon2Tag6 = adv_data(16:1)
+			
+			if side2tag6 = 0 then
+				tags_t06(12:1) = RSSIBeacon2Tag6
+				side2tag6 = side2tag6 + 1
+			end if
+			
+			if side2tag6 = 1 then
+				tags_t06(13:1) = RSSIBeacon2Tag6
+				side2tag6 = side2tag6 + 1
+			end if
+			
+			if side2tag6 = 2 then
+				tags_t06(14:1) = RSSIBeacon2Tag6
+				side2tag6 = side2tag6 + 1
+			end if
+			
+			if side2tag6 = 3 then
+				tags_t06(15:1) = RSSIBeacon2Tag6
+				side2tag6 = side2tag6 + 1
+			end if
+			
+			if side2tag6 = 4 then
+				tags_t06(16:1) = RSSIBeacon2Tag6
+				side2tag6 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+			######################################### tag 7 side 2
+			RSSIBeacon2Tag7 = adv_data(17:1)
+			
+			if side2tag7 = 0 then
+				tags_t07(12:1) = RSSIBeacon2Tag7
+				side2tag7 = side2tag7 + 1
+			end if
+			
+			if side2tag7 = 1 then
+				tags_t07(13:1) = RSSIBeacon2Tag7
+				side2tag7 = side2tag7 + 1
+			end if
+			
+			if side2tag7 = 2 then
+				tags_t07(14:1) = RSSIBeacon2Tag7
+				side2tag7 = side2tag7 + 1
+			end if
+			
+			if side2tag7 = 3 then
+				tags_t07(15:1) = RSSIBeacon2Tag7
+				side2tag7 = side2tag7 + 1
+			end if
+			
+			if side2tag7 = 4 then
+				tags_t07(16:1) = RSSIBeacon2Tag7
+				side2tag7 = 0
+			end if			
+			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+			######################################### tag 8 side 2
+			RSSIBeacon2Tag8 = adv_data(18:1)
+			
+			if side2tag8 = 0 then
+				tags_t08(12:1) = RSSIBeacon2Tag8
+				side2tag8 = side2tag8 + 1
+			end if
+			
+			if side2tag8 = 1 then
+				tags_t08(13:1) = RSSIBeacon2Tag8
+				side2tag8 = side2tag8 + 1
+			end if
+			
+			if side2tag8 = 2 then
+				tags_t08(14:1) = RSSIBeacon2Tag8
+				side2tag8 = side2tag8 + 1
+			end if
+			
+			if side2tag8 = 3 then
+				tags_t08(15:1) = RSSIBeacon2Tag8
+				side2tag8 = side2tag8 + 1
+			end if
+			
+			if side2tag8 = 4 then
+				tags_t08(16:1) = RSSIBeacon2Tag8
+				side2tag8 = 0
+			end if				
+			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+		end if 
+		######################################################################################################################################################## side 3
+		if adv_data(0:1)= $DD then
+		
+			battery1 = adv_data(5:1)
+			battery2 = adv_data(6:1)
+			xgatt_beacon3(0:1) = battery1
+			xgatt_beacon3(1:1) = battery2
+			
+			RSSIBeacon3Tag1 = adv_data(11:1)
+			
+			if side3 = 0 then
+				tags_t01(17:1) = RSSIBeacon3Tag1
+				side3 = side3 + 1
+			end if
+			
+			if side3 = 1 then
+				tags_t01(18:1) = RSSIBeacon3Tag1
+				side3 = side3 + 1
+			end if
+			
+			if side3 = 2 then
+				tags_t01(19:1) = RSSIBeacon3Tag1
+				side3 = side3 + 1
+			end if
+			
+			if side3 = 3 then
+				tags_t01(20:1) = RSSIBeacon3Tag1
+				side3 = side3 + 1
+			end if
+			
+			if side3 = 4 then
+				tags_t01(21:1) = RSSIBeacon3Tag1
+				side3 = 0
+			end if
+			
+			call endpoint_send(endpoint_uart1, 6, "Side 3")
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call endpoint_send(endpoint_uart1, 22, tags_t01(0:22))
+			call endpoint_send(endpoint_uart1, 2, "\r\n")
+			call gatt_server_write_attribute_value(xgatt_tag01,0,TAGS_SIZE,tags_t01(0:TAGS_SIZE))
+			######################################### tag 3
+			RSSIBeacon3Tag2 = adv_data(12:1)
+			
+			if side3tag2 = 0 then
+				tags_t02(17:1) = RSSIBeacon3Tag2
+				side3tag2 = side3tag2 + 1
+			end if
+			
+			if side3tag2 = 1 then
+				tags_t02(18:1) = RSSIBeacon3Tag2
+				side3tag2 = side3tag2 + 1
+			end if
+			
+			if side3tag2 = 2 then
+				tags_t02(19:1) = RSSIBeacon3Tag2
+				side3tag2 = side3tag2 + 1
+			end if
+			
+			if side3tag2 = 3 then
+				tags_t02(20:1) = RSSIBeacon3Tag2
+				side3tag2= side3tag2 + 1
+			end if
+			
+			if side3tag2 = 4 then
+				tags_t02(21:1) = RSSIBeacon3Tag2
+				side3tag2 = 0
+			end if
+			call gatt_server_write_attribute_value(xgatt_tag02,0,TAGS_SIZE,tags_t02(0:TAGS_SIZE))
+			######################################### tag 3 side 3
+			RSSIBeacon3Tag3 = adv_data(13:1)
+			
+			if side3tag3 = 0 then
+				tags_t03(17:1) = RSSIBeacon3Tag3
+				side3tag3 = side3tag3 + 1
+			end if
+			
+			if side3tag3  = 1 then
+				tags_t03(18:1) = RSSIBeacon3Tag3
+				side3tag3 = side3tag3 + 1
+			end if
+			
+			if side3tag3  = 2 then
+				tags_t03(19:1) = RSSIBeacon3Tag3
+				side3tag3 = side3tag3 + 1
+			end if
+			
+			if side3tag3  = 3 then
+				tags_t03(20:1) = RSSIBeacon3Tag3
+				side3tag3 = side3tag3 + 1
+			end if
+			
+			if side3tag3  = 4 then
+				tags_t03(21:1) = RSSIBeacon3Tag3
+				side3tag3 = 0
+			end if	
+			call gatt_server_write_attribute_value(xgatt_tag03,0,TAGS_SIZE,tags_t03(0:TAGS_SIZE))
+			######################################### tag 4 side 3
+			RSSIBeacon3Tag4 = adv_data(14:1)
+			
+			if side3tag4 = 0 then
+				tags_t04(17:1) = RSSIBeacon3Tag4
+				side3tag4 = side3tag4 + 1
+			end if
+			
+			if side3tag4 = 1 then
+				tags_t04(18:1) = RSSIBeacon3Tag4
+				side3tag4 = side3tag4 + 1
+			end if
+			
+			if side3tag4 = 2 then
+				tags_t04(19:1) = RSSIBeacon3Tag4
+				side3tag4 = side3tag4 + 1
+			end if
+			
+			if side3tag4 = 3 then
+				tags_t04(20:1) = RSSIBeacon3Tag4
+				side3tag4 = side3tag4 + 1
+			end if
+			
+			if side3tag4 = 4 then
+				tags_t04(21:1) = RSSIBeacon3Tag4
+				side3tag4 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag04,0,TAGS_SIZE,tags_t04(0:TAGS_SIZE))
+			######################################### tag 5 side 3
+			RSSIBeacon3Tag5 = adv_data(15:1)
+			
+			if side3tag5 = 0 then
+				tags_t05(17:1) = RSSIBeacon3Tag5
+				side3tag5 = side3tag5 + 1
+			end if
+			
+			if side3tag5 = 1 then
+				tags_t05(18:1) = RSSIBeacon3Tag5
+				side3tag5 = side3tag5 + 1
+			end if
+			
+			if side3tag5 = 2 then
+				tags_t05(19:1) = RSSIBeacon3Tag5
+				side3tag5 = side3tag5 + 1
+			end if
+			
+			if side3tag5 = 3 then
+				tags_t05(20:1) = RSSIBeacon3Tag5
+				side3tag5 = side3tag5 + 1
+			end if
+			
+			if side3tag5 = 4 then
+				tags_t05(21:1) = RSSIBeacon3Tag5
+				side3tag5 = 0
+			end if		
+			call gatt_server_write_attribute_value(xgatt_tag05,0,TAGS_SIZE,tags_t05(0:TAGS_SIZE))
+			######################################### tag 6 side 3
+			RSSIBeacon3Tag6 = adv_data(16:1)
+			
+			if side3tag6 = 0 then
+				tags_t06(17:1) = RSSIBeacon3Tag6
+				side3tag6 = side3tag6 + 1
+			end if
+			
+			if side3tag6 = 1 then
+				tags_t06(18:1) = RSSIBeacon3Tag6
+				side3tag6 = side3tag6 + 1
+			end if
+			
+			if side3tag6 = 2 then
+				tags_t06(19:1) = RSSIBeacon3Tag6
+				side3tag6 = side3tag6 + 1
+			end if
+			
+			if side3tag6 = 3 then
+				tags_t06(20:1) = RSSIBeacon3Tag6
+				side3tag6 = side3tag6 + 1
+			end if
+			
+			if side3tag6 = 4 then
+				tags_t06(21:1) = RSSIBeacon3Tag6
+				side3tag6 = 0
+			end if					
+			call gatt_server_write_attribute_value(xgatt_tag06,0,TAGS_SIZE,tags_t06(0:TAGS_SIZE))
+			######################################### tag 7 side 3
+			RSSIBeacon3Tag7 = adv_data(17:1)
+			
+			if side3tag7 = 0 then
+				tags_t07(17:1) = RSSIBeacon3Tag7
+				side3tag7 = side3tag7 + 1
+			end if
+			
+			if side3tag7 = 1 then
+				tags_t07(18:1) = RSSIBeacon3Tag7
+				side3tag7 = side3tag7 + 1
+			end if
+			
+			if side3tag7 = 2 then
+				tags_t07(19:1) = RSSIBeacon3Tag7
+				side3tag7 = side3tag7 + 1
+			end if
+			
+			if side3tag7 = 3 then
+				tags_t07(20:1) = RSSIBeacon3Tag7
+				side3tag7 = side3tag7 + 1
+			end if
+			
+			if side3tag7 = 4 then
+				tags_t07(21:1) = RSSIBeacon3Tag7
+				side3tag7 = 0
+			end if			
+			call gatt_server_write_attribute_value(xgatt_tag07,0,TAGS_SIZE,tags_t07(0:TAGS_SIZE))
+			######################################### tag 8 side 3
+			RSSIBeacon3Tag8 = adv_data(18:1)
+			
+			if side3tag8 = 0 then
+				tags_t08(12:1) = RSSIBeacon3Tag8
+				side3tag8 = side3tag8 + 1
+			end if
+			
+			if side3tag8 = 1 then
+				tags_t08(13:1) = RSSIBeacon3Tag8
+				side3tag8 = side3tag8 + 1
+			end if
+			
+			if side3tag8 = 2 then
+				tags_t08(14:1) = RSSIBeacon3Tag8
+				side3tag8 = side3tag8 + 1
+			end if
+			
+			if side3tag8 = 3 then
+				tags_t08(15:1) = RSSIBeacon3Tag8
+				side3tag8 = side3tag8 + 1
+			end if
+			
+			if side3tag8 = 4 then
+				tags_t08(16:1) = RSSIBeacon3Tag8
+				side3tag8 = 0
+			end if	
+			call gatt_server_write_attribute_value(xgatt_tag08,0,TAGS_SIZE,tags_t08(0:TAGS_SIZE))
+		end if 
+			
+	end if
+	#bytes 5 and 6 contain the voltage
+end 
+
+event le_gap_scan_response(rssi,packet_type,address,address_type,bonding,data_len, data_data)
+
+    SigVal = -1 * rssi
+	
+				 
+		#call endpoint_send(endpoint_uart1, 12, "scan resp: ")  
+		#call print_hex(address(0:1))
+		#call print_hex(address(1:1))
+		#call print_hex(address(2:1))
+		#call print_hex(address(3:1))
+		#call print_hex(address(4:1))
+		#call print_hex(address(5:1))
+		#call endpoint_send(endpoint_uart1, 2, "\r\n")
+
+		# decode adveritsing data to see if we found what we are looking for.
+		# if match is found, ad_match_found variable is set to positive value
+		call decode_adv_data(data_len, data_data(0:data_len))
+    
+	
+   
+   # call le_gap_end_procedure()     
+       
+
+end 
+
+# This event indicates that a GATT MTU exchange procedure has been completed.
+#----------------------------------------------------------------------------
+event gatt_mtu_exchanged(connection, mtu)
+	maxPayload = mtu - 1
+end
+
+
+# End of BGScript

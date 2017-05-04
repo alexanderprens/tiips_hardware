@@ -1,0 +1,88 @@
+#-----------------------------------------------------------------------------
+# The Bluetooth Developer Studio auto-generated code
+# 
+# (C) Copyright 2016 Silicon Labs, http://www.silabs.com
+#
+# This file is licensed under the Silabs License Agreement. See the file
+# "Silabs_License_Agreement.txt" for details. Before using this software for
+# any purpose, you must agree to the terms of that agreement.
+#-----------------------------------------------------------------------------
+ 
+#-------------------------------------------------------------------------------
+#*----------------------------    DEFINES   ------------------------------------
+#-------------------------------------------------------------------------------
+# buffer size = maximum characteristic length(64)
+const ATT_BUFFER_SIZE = 64
+# Value to indicate that connection handle is invalid
+export const CONNECTION_HANDLE_UNDEFINED = $FFFF
+# MTU size
+export const MTU_SIZE                    = 58
+#-------------------------------------------------------------------------------
+#-----------------------------   GLOBAL DATA   ----------------------------------
+#-------------------------------------------------------------------------------
+export dim attHandler_connection
+export dim attHandler_characteristic
+export dim attHandler_bufferDataLength
+export dim attHandler_buffer(80)
+export dim resultBGcommand
+export dim tmp_bytesRead
+export dim maxPayload
+
+#-------------------------------------------------------------------------------
+#-----------------------------   LOCAL DATA   ----------------------------------
+#-------------------------------------------------------------------------------
+dim attHandler_currentPosition
+dim tmp_bytesToSend
+
+#-------------------------------------------------------------------------------
+#   Send data over BLE. It automatically handle sending long charactiristics.
+#
+#   connection - connection id
+#   attHandle - characteristic handle
+#   data_len - size of data to send
+#   data_data - data to send
+#-------------------------------------------------------------------------------
+export procedure ble_attSendData(connection, attHandle, data_len, data_data())
+    
+    tmp_bytesToSend = data_len
+    attHandler_bufferDataLength = data_len
+    if data_len >= maxPayload then
+      attHandler_characteristic = attHandle
+      attHandler_currentPosition = maxPayload
+      tmp_bytesToSend = maxPayload
+    end if
+
+    # Send response
+    call gatt_server_send_user_read_response(connection, attHandle, 0, tmp_bytesToSend, data_data(0:data_len))
+end
+
+#-------------------------------------------------------------------------------
+#   Procedure handle sending long characterictic value
+#
+#   attHandle - characteristic handle
+#   offset - offset for reading data
+#-------------------------------------------------------------------------------
+export procedure ble_attSendDataHandler(attHandle, offset)
+  if attHandle = attHandler_characteristic then
+    if offset != attHandler_currentPosition then
+      # Send response that offset is invalid
+      call gatt_server_send_user_read_response(attHandler_connection, attHandle, $07, 0, 0)
+      return
+    end if
+
+    # Calculate remaining bytes to send 
+    tmp_bytesToSend = attHandler_bufferDataLength  - attHandler_currentPosition
+
+    if tmp_bytesToSend < maxPayload then
+      # Last packet - clear attribute handle
+      attHandler_characteristic = 0
+    else
+      tmp_bytesToSend = maxPayload
+    end if
+    
+    # Send response
+    call gatt_server_send_user_read_response(attHandler_connection, attHandle, 0, tmp_bytesToSend, attHandler_buffer(attHandler_currentPosition:tmp_bytesToSend))
+    # Set new position                                              
+    attHandler_currentPosition = attHandler_currentPosition + tmp_bytesToSend
+  end if
+end
